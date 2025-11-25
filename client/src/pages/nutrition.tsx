@@ -3,6 +3,7 @@ import { MobileShell } from "@/components/layout/mobile-shell";
 import { Camera, Mic, ChevronRight, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import healthyBreakfastImg from "@assets/stock_images/healthy_breakfast_eg_4358bed4.jpg";
 
 export default function Nutrition() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -68,7 +69,7 @@ export default function Nutrition() {
           <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-8 duration-500">
              <div className="relative aspect-video rounded-2xl overflow-hidden mb-6 shadow-2xl">
                 <img 
-                  src="/attached_assets/stock_images/healthy_breakfast_eg_4358bed4.jpg" 
+                  src={healthyBreakfastImg} 
                   className="w-full h-full object-cover"
                   alt="Scanned meal"
                 />

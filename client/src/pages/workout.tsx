@@ -4,6 +4,10 @@ import { ChevronLeft, Play, Pause, SkipForward, Check, Clock } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
+import jumpRopeImg from "@assets/stock_images/person_doing_jump_ro_c71aaefd.jpg";
+import bagWorkImg from "@assets/stock_images/person_punching_heav_5b73f17e.jpg";
+import gobletSquatsImg from "@assets/stock_images/person_doing_goblet__77b2e30f.jpg";
+
 // Mock Workout Data
 const WORKOUT_DATA = [
   {
@@ -13,7 +17,7 @@ const WORKOUT_DATA = [
     rounds: 3, // Reduced for demo
     workTime: 10, // Shortened for demo
     restTime: 5,  // Shortened for demo
-    image: "/attached_assets/stock_images/person_doing_jump_ro_c71aaefd.jpg",
+    image: jumpRopeImg,
     tips: "Stay on your toes, keep elbows in.",
     reps: 0,
     sets: 0,
@@ -25,7 +29,7 @@ const WORKOUT_DATA = [
     rounds: 3,
     workTime: 15,
     restTime: 10,
-    image: "/attached_assets/stock_images/person_punching_heav_5b73f17e.jpg",
+    image: bagWorkImg,
     tips: "Focus on snapping your punches.",
     reps: 0,
     sets: 0,
@@ -38,7 +42,7 @@ const WORKOUT_DATA = [
     reps: "12-15",
     weight: "24kg",
     restTime: 15,
-    image: "/attached_assets/stock_images/person_doing_goblet__77b2e30f.jpg",
+    image: gobletSquatsImg,
     tips: "Keep chest up, knees out.",
     workTime: 0,
     rounds: 0,
