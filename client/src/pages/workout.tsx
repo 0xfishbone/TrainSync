@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronLeft, Play, Pause, SkipForward, Check, Clock } from "lucide-react";
+import { ChevronLeft, Play, Pause, SkipForward, Check, Clock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 import jumpRopeImg from "@assets/stock_images/person_doing_jump_ro_c71aaefd.jpg";
 import bagWorkImg from "@assets/stock_images/person_punching_heav_5b73f17e.jpg";
@@ -51,11 +51,13 @@ const WORKOUT_DATA = [
 
 export default function Workout() {
   const [_, setLocation] = useLocation();
-  const [phase, setPhase] = useState<"preview" | "work" | "rest" | "summary">("preview");
+  const [phase, setPhase] = useState<"preview" | "work" | "rest" | "rating" | "summary">("preview");
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentRound, setCurrentRound] = useState(1);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isActive, setIsActive] = useState(false);
+  const [difficulty, setDifficulty] = useState<"Easy" | "Good" | "Hard" | null>(null);
+  const [extraRestTime, setExtraRestTime] = useState(0);
   
   const currentExercise = WORKOUT_DATA[currentExerciseIndex];
   const totalExercises = WORKOUT_DATA.length;
@@ -63,45 +65,65 @@ export default function Workout() {
   // Timer Logic
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && isActive) {
-      handleTimerComplete();
+    
+    if (isActive) {
+      if (timeLeft > 0) {
+        // Normal countdown
+        interval = setInterval(() => {
+          setTimeLeft((prev) => prev - 1);
+        }, 1000);
+      } else if (timeLeft === 0 && phase === "rest") {
+        // Rest timer hit 0, start counting extra rest
+        setExtraRestTime(prev => prev + 1); // Initial increment
+        interval = setInterval(() => {
+          setExtraRestTime((prev) => prev + 1);
+        }, 1000);
+      } else if (timeLeft === 0) {
+        // Work timer hit 0
+        handleTimerComplete();
+      }
     }
+    
     return () => clearInterval(interval);
-  }, [isActive, timeLeft]);
+  }, [isActive, timeLeft, phase]);
 
   const handleTimerComplete = () => {
-    setIsActive(false);
     // Haptic feedback would go here
     if (phase === "work") {
+      setIsActive(false);
       setPhase("rest");
       setTimeLeft(currentExercise.restTime || 0);
+      setExtraRestTime(0);
       setIsActive(true);
-    } else if (phase === "rest") {
-      handleNextRound();
     }
   };
 
   const handleNextRound = () => {
     const totalRounds = currentExercise.rounds || currentExercise.sets || 1;
+    setIsActive(false);
     
     if (currentRound < totalRounds) {
       setCurrentRound((prev) => prev + 1);
       setPhase("work");
       setTimeLeft(currentExercise.workTime || 0); // Reset timer if timed
     } else {
-      // Exercise Complete
+      // Exercise Complete -> Ask for Difficulty
+      setPhase("rating");
+    }
+  };
+
+  const submitRatingAndContinue = (rating: "Easy" | "Good" | "Hard") => {
+      setDifficulty(rating);
+      // In a real app, we would save this data here
+      
       if (currentExerciseIndex < totalExercises - 1) {
         setCurrentExerciseIndex((prev) => prev + 1);
         setCurrentRound(1);
-        setPhase("preview"); // Show preview for next exercise
+        setPhase("preview"); 
+        setDifficulty(null);
       } else {
         setPhase("summary");
       }
-    }
   };
 
   const startWorkout = () => {
@@ -248,12 +270,24 @@ export default function Workout() {
     return (
       <div className="min-h-screen bg-rest/10 flex flex-col relative overflow-hidden">
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-           <span className="text-rest font-bold uppercase tracking-widest mb-4 animate-pulse">Resting</span>
-           <div className="text-[100px] font-mono font-bold text-rest tabular-nums tracking-tighter leading-none mb-8">
-             {formatTime(timeLeft)}
-           </div>
+           <span className="text-rest font-bold uppercase tracking-widest mb-4 animate-pulse">
+             {extraRestTime > 0 ? "Extra Rest" : "Resting"}
+           </span>
            
-           <div className="bg-black/20 backdrop-blur-sm p-4 rounded-2xl max-w-xs border border-rest/20">
+           <div className={cn(
+             "text-[100px] font-mono font-bold tabular-nums tracking-tighter leading-none mb-2",
+             extraRestTime > 0 ? "text-destructive" : "text-rest"
+           )}>
+             {extraRestTime > 0 ? `+${formatTime(extraRestTime)}` : formatTime(timeLeft)}
+           </div>
+
+           {extraRestTime > 0 && (
+             <p className="text-destructive font-bold mb-8 animate-pulse">
+               Target rest exceeded
+             </p>
+           )}
+           
+           <div className="bg-black/20 backdrop-blur-sm p-4 rounded-2xl max-w-xs border border-rest/20 mt-4">
              <p className="text-sm text-rest/80 mb-1">Next Up</p>
              <p className="font-bold text-white text-lg">
                {currentRound < (currentExercise.rounds || currentExercise.sets || 0) 
@@ -266,10 +300,50 @@ export default function Workout() {
         <div className="p-6 pb-12">
           <button 
             onClick={handleNextRound}
-            className="w-full h-16 bg-rest hover:bg-cyan-300 active:scale-95 transition-all rounded-2xl text-black font-bold text-xl shadow-xl shadow-rest/20"
+            className={cn(
+              "w-full h-16 active:scale-95 transition-all rounded-2xl font-bold text-xl shadow-xl",
+              extraRestTime > 0 
+                ? "bg-destructive text-white shadow-destructive/20 hover:bg-red-600" 
+                : "bg-rest text-black shadow-rest/20 hover:bg-cyan-300"
+            )}
           >
-            Skip Rest
+            {extraRestTime > 0 ? "Start Set (Recorded)" : "Skip Rest"}
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "rating") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col p-6 items-center justify-center text-center space-y-8 animate-in fade-in duration-500">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">{currentExercise.name} Complete</h1>
+          <p className="text-secondary">How did that feel?</p>
+        </div>
+
+        <div className="w-full grid gap-4">
+           <button 
+             onClick={() => submitRatingAndContinue("Easy")}
+             className="h-20 bg-elevated hover:bg-surface border border-border rounded-2xl flex items-center justify-between px-6 group transition-all active:scale-95"
+           >
+             <span className="font-bold text-lg group-hover:text-success transition-colors">Easy</span>
+             <span className="text-2xl">😌</span>
+           </button>
+           <button 
+             onClick={() => submitRatingAndContinue("Good")}
+             className="h-20 bg-elevated hover:bg-surface border border-border rounded-2xl flex items-center justify-between px-6 group transition-all active:scale-95"
+           >
+             <span className="font-bold text-lg group-hover:text-primary transition-colors">Good</span>
+             <span className="text-2xl">👍</span>
+           </button>
+           <button 
+             onClick={() => submitRatingAndContinue("Hard")}
+             className="h-20 bg-elevated hover:bg-surface border border-border rounded-2xl flex items-center justify-between px-6 group transition-all active:scale-95"
+           >
+             <span className="font-bold text-lg group-hover:text-destructive transition-colors">Hard</span>
+             <span className="text-2xl">🥵</span>
+           </button>
         </div>
       </div>
     );

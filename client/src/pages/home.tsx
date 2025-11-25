@@ -24,9 +24,11 @@ export default function Home() {
               </span>
             </div>
           </div>
-          <button className="w-10 h-10 rounded-full bg-elevated flex items-center justify-center border border-border">
-            <User size={20} className="text-secondary" />
-          </button>
+          <Link href="/profile">
+            <button className="w-10 h-10 rounded-full bg-elevated flex items-center justify-center border border-border active:scale-95 transition-transform">
+              <User size={20} className="text-secondary" />
+            </button>
+          </Link>
         </header>
 
         {/* Today's Training Card */}

@@ -1,0 +1,87 @@
+3. CORE FEATURES & USER FLOWS
+Feature Set - MVP
+3.1 Workout System
+
+Pre-programmed 5-day training split (Mon/Wed: Bag work, Thu: Upper, Fri: Cardio, Sat: Lower)
+Exercise-by-exercise guidance with images
+Automatic timers (work + rest) with haptic feedback
+Rest period tracking with accountability (actual vs target)
+Weight adjustment mid-workout
+Post-set difficulty rating (Easy/Good/Hard) with context
+Workout completion logging
+Export to Apple Notes
+
+3.2 Nutrition System
+
+Photo-based meal logging (Gemini vision API)
+Voice-based meal logging
+Text-based quick logging
+Calorie & protein tracking vs daily targets (3,100 cal, 155g protein)
+Meal templates ("Repeat yesterday's breakfast")
+Daily nutrition summary with progress bars
+
+3.3 AI Coaching (Gemini 2.0 Flash)
+
+Meal analysis from photos (food items, calories, protein estimate)
+Weekly workout adjustment recommendations (weight, volume, rest)
+Pattern recognition (correlate nutrition → performance)
+Contextual meal reminders based on schedule and recent eating
+Post-workout feedback based on performance and nutrition
+Weekly review synthesis with actionable insights
+
+3.4 Progress Tracking
+
+Weekly weigh-ins (Wednesday mornings)
+Workout completion calendar
+Exercise progression charts (weight over time)
+Nutrition consistency tracking
+Rest accountability metrics (avg extra rest time)
+
+
+User Flows
+Flow 1: Morning Routine
+1. User wakes up → notification: "Morning. Bag work at 6pm today."
+2. User eats breakfast → opens app → taps "Log Meal"
+3. Takes photo of eggs and coffee
+4. Gemini analyzes → "~450 cal, 25g protein. Sound right?"
+5. User taps "Yes" → meal logged (15 seconds total)
+6. App shows: "2,650 cal remaining, training in 9 hours"
+Flow 2: Workout Session
+1. User arrives at gym → opens app → taps "START WORKOUT"
+2. App shows: "Wednesday - Bag Work + Conditioning"
+3. First exercise: Jump Rope, Round 1/5, 2:00 work
+4. User taps "START ROUND" → timer begins, screen stays on
+5. Timer counts down with green progress bar
+6. At 0:00 → haptic buzz, auto-starts 1:00 rest timer (blue)
+7. Rest ends → shows "Round 2/5" → user taps "START"
+8. After 5 rounds → "How did it feel?" → user taps "Good"
+9. Auto-advances to next exercise (Bag Work)
+10. Repeat pattern through all 4 exercise blocks
+11. End of workout → "Save to Notes" → pre-filled summary
+Flow 3: Rest Period Accountability
+1. User completes Set 1 of Goblet Squats
+2. App starts 2:30 rest timer
+3. Timer reaches 0:00 → haptic + screen shows "Time for Set 2"
+4. User still resting → counter continues in red: "+0:23 extra"
+5. User finally taps "START SET" at +1:15 extra rest
+6. Logged: "Set 2: Actual rest 3:45 (Target 2:30, +1:15)"
+7. End of workout summary: "Avg +52sec extra rest on squats - weight too heavy or distracted?"
+Flow 4: Contextual Meal Reminder
+1. 1:30 PM → User hasn't logged lunch
+2. Notification: "Lunch time. You're at 450 cal, need 2,650 more. Training in 4.5 hours - fuel up."
+3. User ignores
+4. 2:15 PM → Still no lunch logged
+5. Notification: "You missed lunch. Training in 3h45m and you're at 450 cal. You'll be wrecked."
+6. User logs meal via voice: "Chicken rice vegetables"
+7. Gemini: "~750 cal, 45g protein. Logged. You're at 1,200 for the day."
+Flow 5: Weekly Review
+1. Sunday evening → App triggers weekly review
+2. Gemini analyzes: 
+   - Weight: 76kg → 76.3kg (+0.3kg, target +0.5kg)
+   - Workouts: 4/5 completed
+   - Nutrition: avg 2,850 cal (target 3,100), missed target 2 days
+   - Performance: Upper body marked "Hard" after 135g protein day
+   - Rest periods: Avg +45sec extra on lower body days
+3. App shows summary card with insights:
+   "Weight gain slower than target but performance is good. Your 'Hard' days correlate with low protein intake. Add 100 cal/day, focus on hitting 160g protein on strength days. Either push lower body weight or reduce phone time - you're averaging +45sec extra rest."
+4. User can tap "Apply changes" → next week's program adjusted
