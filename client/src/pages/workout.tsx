@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronLeft, Play, Pause, SkipForward, Check, Clock, X } from "lucide-react";
+import { ChevronLeft, Play, Pause, SkipForward, Check, Clock, X, Share, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 import jumpRopeImg from "@assets/stock_images/person_doing_jump_ro_c71aaefd.jpg";
 import bagWorkImg from "@assets/stock_images/person_punching_heav_5b73f17e.jpg";
@@ -21,6 +22,7 @@ const WORKOUT_DATA = [
     tips: "Stay on your toes, keep elbows in.",
     reps: 0,
     sets: 0,
+    defaultWeight: 0,
   },
   {
     id: 2,
@@ -33,6 +35,7 @@ const WORKOUT_DATA = [
     tips: "Focus on snapping your punches.",
     reps: 0,
     sets: 0,
+    defaultWeight: 0,
   },
   {
     id: 3,
@@ -40,7 +43,7 @@ const WORKOUT_DATA = [
     type: "reps",
     sets: 3,
     reps: "12-15",
-    weight: "24kg",
+    defaultWeight: 24,
     restTime: 15,
     image: gobletSquatsImg,
     tips: "Keep chest up, knees out.",
@@ -58,9 +61,15 @@ export default function Workout() {
   const [isActive, setIsActive] = useState(false);
   const [difficulty, setDifficulty] = useState<"Easy" | "Good" | "Hard" | null>(null);
   const [extraRestTime, setExtraRestTime] = useState(0);
+  const [currentWeight, setCurrentWeight] = useState(0);
   
   const currentExercise = WORKOUT_DATA[currentExerciseIndex];
   const totalExercises = WORKOUT_DATA.length;
+
+  // Initialize weight when exercise changes
+  useEffect(() => {
+    setCurrentWeight(currentExercise.defaultWeight || 0);
+  }, [currentExerciseIndex]);
 
   // Timer Logic
   useEffect(() => {
@@ -132,6 +141,16 @@ export default function Workout() {
     setIsActive(currentExercise.type === "timed");
   };
 
+  const handleShare = () => {
+    toast.success("Copied to Clipboard", {
+      description: "Workout summary ready for Apple Notes",
+    });
+  };
+
+  const adjustWeight = (amount: number) => {
+    setCurrentWeight(prev => Math.max(0, prev + amount));
+  };
+
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -167,7 +186,7 @@ export default function Workout() {
           <div className="mt-auto space-y-6 pb-10">
             <div>
               <h1 className="text-4xl font-display font-bold mb-2">{currentExercise.name}</h1>
-              <div className="flex items-center gap-4 text-secondary">
+              <div className="flex items-center gap-4 text-secondary mb-4">
                 <span className="flex items-center gap-1">
                    <Clock size={16} /> 
                    {currentExercise.type === 'timed' 
@@ -178,6 +197,28 @@ export default function Workout() {
                 <span className="w-1 h-1 rounded-full bg-secondary" />
                 <span>{currentExercise.tips}</span>
               </div>
+
+              {/* Weight Adjustment in Preview */}
+              {currentExercise.type === 'reps' && (
+                <div className="bg-surface/50 backdrop-blur-md border border-white/10 rounded-xl p-4 flex items-center justify-between mb-4">
+                  <span className="text-sm font-bold uppercase text-secondary">Weight</span>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => adjustWeight(-2)}
+                      className="w-10 h-10 rounded-full bg-elevated flex items-center justify-center border border-border active:scale-95"
+                    >
+                      <Minus size={18} />
+                    </button>
+                    <span className="text-2xl font-bold w-16 text-center">{currentWeight}kg</span>
+                    <button 
+                      onClick={() => adjustWeight(2)}
+                      className="w-10 h-10 rounded-full bg-elevated flex items-center justify-center border border-border active:scale-95"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <button 
@@ -225,7 +266,9 @@ export default function Workout() {
                <div className="text-[80px] font-bold text-white tabular-nums leading-none">
                  {currentExercise.reps}
                </div>
-               <div className="text-2xl text-secondary font-medium">Reps</div>
+               <div className="text-2xl text-secondary font-medium">
+                 {currentWeight > 0 ? `@ ${currentWeight}kg` : "Reps"}
+               </div>
              </div>
            )}
         </div>
@@ -376,11 +419,21 @@ export default function Workout() {
            </div>
         </div>
 
-        <Link href="/">
-          <button className="w-full h-14 bg-secondary hover:bg-elevated active:scale-95 transition-all rounded-xl text-white font-bold border border-border">
-            Back to Home
+        <div className="w-full space-y-3">
+          <button 
+            onClick={handleShare}
+            className="w-full h-14 bg-primary hover:bg-blue-600 active:scale-95 transition-all rounded-xl text-white font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+          >
+            <Share size={20} />
+            Export to Notes
           </button>
-        </Link>
+          
+          <Link href="/">
+            <button className="w-full h-14 bg-transparent hover:bg-elevated active:scale-95 transition-all rounded-xl text-secondary font-bold">
+              Back to Home
+            </button>
+          </Link>
+        </div>
       </div>
     );
   }

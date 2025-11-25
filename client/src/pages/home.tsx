@@ -1,24 +1,71 @@
 import { MobileShell } from "@/components/layout/mobile-shell";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { Link } from "wouter";
-import { ChevronRight, Plus, User } from "lucide-react";
+import { ChevronRight, Plus, User, X, Check } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export default function Home() {
   const today = new Date();
+  const [showWeighIn, setShowWeighIn] = useState(false);
+  const [weight, setWeight] = useState("85.2");
+
+  const handleWeightSave = () => {
+    setShowWeighIn(false);
+    toast.success("Weight Updated", {
+      description: `New weight: ${weight}kg`,
+    });
+  };
 
   return (
     <MobileShell>
-      <div className="p-6 space-y-8 pt-12">
+      <div className="p-6 space-y-8 pt-12 relative">
+        {/* Weigh-in Modal Overlay */}
+        {showWeighIn && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+            <div className="bg-surface w-full max-w-xs rounded-2xl p-6 border border-border shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold">Log Weight</h3>
+                <button onClick={() => setShowWeighIn(false)} className="p-2 hover:bg-elevated rounded-full">
+                  <X size={20} className="text-secondary" />
+                </button>
+              </div>
+              
+              <div className="flex items-center justify-center gap-2 mb-8">
+                <input
+                  type="number"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  className="bg-transparent text-5xl font-bold text-center w-32 focus:outline-none border-b-2 border-primary pb-2"
+                  autoFocus
+                />
+                <span className="text-xl text-secondary font-medium mt-4">kg</span>
+              </div>
+
+              <button 
+                onClick={handleWeightSave}
+                className="w-full h-12 bg-primary rounded-xl font-bold text-white flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              >
+                <Check size={20} />
+                Save Entry
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <header className="flex justify-between items-center">
           <div>
             <h1 className="text-sm font-medium text-tertiary uppercase tracking-wider">
               {format(today, "EEEE, MMM d")}
             </h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-2xl font-display font-bold">85.2 kg</span>
+            <div 
+              onClick={() => setShowWeighIn(true)}
+              className="flex items-center gap-2 mt-1 cursor-pointer active:opacity-70 transition-opacity"
+            >
+              <span className="text-2xl font-display font-bold">{weight} kg</span>
               <span className="text-xs font-medium text-success bg-success/10 px-2 py-1 rounded-full">
                 ↗ +0.3kg
               </span>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { MobileShell } from "@/components/layout/mobile-shell";
-import { Camera, Mic, ChevronRight, Loader2, Check } from "lucide-react";
+import { Camera, Mic, ChevronRight, Loader2, Check, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import healthyBreakfastImg from "@assets/stock_images/healthy_breakfast_eg_4358bed4.jpg";
@@ -8,6 +8,8 @@ import healthyBreakfastImg from "@assets/stock_images/healthy_breakfast_eg_4358b
 export default function Nutrition() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResult, setShowResult] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textInput, setTextInput] = useState("");
 
   const handleScan = () => {
     setIsAnalyzing(true);
@@ -18,11 +20,26 @@ export default function Nutrition() {
     }, 2500);
   };
 
+  const handleTextSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!textInput.trim()) return;
+    
+    setIsAnalyzing(true);
+    setShowTextInput(false);
+    
+    // Simulate text analysis
+    setTimeout(() => {
+      setIsAnalyzing(false);
+      setShowResult(true);
+    }, 1500);
+  };
+
   const handleConfirm = () => {
     toast.success("Meal logged successfully", {
       description: "Added 450 kcal, 25g protein",
     });
     setShowResult(false);
+    setTextInput("");
   };
 
   return (
@@ -30,7 +47,7 @@ export default function Nutrition() {
       <div className="p-6 pt-12 min-h-screen flex flex-col">
         <header className="mb-8">
           <h1 className="text-2xl font-display font-bold mb-1">Log Meal</h1>
-          <p className="text-secondary">Snap a photo or describe your food.</p>
+          <p className="text-secondary">Snap a photo, speak, or type.</p>
         </header>
 
         {!showResult ? (
@@ -43,27 +60,64 @@ export default function Nutrition() {
                  </div>
                )}
                
-               <Camera size={64} className="text-tertiary mb-4" />
-               <p className="text-center text-secondary">Tap to take a photo of your meal</p>
+               {showTextInput ? (
+                 <form onSubmit={handleTextSubmit} className="w-full h-full flex flex-col">
+                   <textarea
+                     autoFocus
+                     value={textInput}
+                     onChange={(e) => setTextInput(e.target.value)}
+                     placeholder="e.g. 2 eggs, slice of toast, black coffee..."
+                     className="flex-1 bg-transparent border-none resize-none text-lg text-white placeholder:text-secondary focus:ring-0 p-0"
+                   />
+                   <button 
+                     type="submit"
+                     className="mt-4 h-12 bg-primary rounded-xl text-white font-bold active:scale-95 transition-transform"
+                   >
+                     Analyze Text
+                   </button>
+                   <button 
+                     type="button"
+                     onClick={() => setShowTextInput(false)}
+                     className="mt-2 h-12 text-secondary font-medium"
+                   >
+                     Cancel
+                   </button>
+                 </form>
+               ) : (
+                 <>
+                   <Camera size={64} className="text-tertiary mb-4" />
+                   <p className="text-center text-secondary">Tap to take a photo of your meal</p>
+                 </>
+               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <button 
-                onClick={handleScan}
-                disabled={isAnalyzing}
-                className="h-16 bg-primary hover:bg-blue-600 active:scale-95 transition-all rounded-2xl text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-              >
-                <Camera size={20} />
-                Photo
-              </button>
-              <button 
-                disabled={isAnalyzing}
-                className="h-16 bg-elevated hover:bg-secondary active:scale-95 transition-all rounded-2xl text-white font-bold flex items-center justify-center gap-2 border border-border"
-              >
-                <Mic size={20} />
-                Voice
-              </button>
-            </div>
+            {!showTextInput && (
+              <div className="grid grid-cols-3 gap-3">
+                <button 
+                  onClick={handleScan}
+                  disabled={isAnalyzing}
+                  className="h-16 bg-primary hover:bg-blue-600 active:scale-95 transition-all rounded-2xl text-white font-bold flex flex-col items-center justify-center gap-1 shadow-lg shadow-primary/20"
+                >
+                  <Camera size={20} />
+                  <span className="text-xs">Photo</span>
+                </button>
+                <button 
+                  disabled={isAnalyzing}
+                  className="h-16 bg-elevated hover:bg-secondary active:scale-95 transition-all rounded-2xl text-white font-bold flex flex-col items-center justify-center gap-1 border border-border"
+                >
+                  <Mic size={20} />
+                  <span className="text-xs">Voice</span>
+                </button>
+                <button 
+                  onClick={() => setShowTextInput(true)}
+                  disabled={isAnalyzing}
+                  className="h-16 bg-elevated hover:bg-secondary active:scale-95 transition-all rounded-2xl text-white font-bold flex flex-col items-center justify-center gap-1 border border-border"
+                >
+                  <Type size={20} />
+                  <span className="text-xs">Text</span>
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-8 duration-500">
