@@ -62,6 +62,16 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getAllUserIds(): Promise<string[]> {
+    // Return all user IDs with completed onboarding
+    const profiles = await db
+      .select({ userId: userProfiles.userId })
+      .from(userProfiles)
+      .where(eq(userProfiles.onboardingCompleted, true));
+
+    return profiles.map((p) => p.userId);
+  }
+
   // ========== User Profiles ==========
 
   async getUserProfile(userId: string): Promise<UserProfile | undefined> {

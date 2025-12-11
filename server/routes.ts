@@ -1176,6 +1176,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==========================================================================
+  // VERCEL CRON JOBS
+  // ==========================================================================
+
+  // Combined Saturday tasks (weigh-in + weekly review)
+  // Called by Vercel Cron every Saturday at 7am (see vercel.json)
+  app.get("/api/cron/saturday-tasks", async (_req: Request, res: Response) => {
+    try {
+      // Verify cron secret for security
+      const cronSecret = _req.headers.authorization?.replace("Bearer ", "");
+      if (cronSecret !== process.env.CRON_SECRET) {
+        return res.status(401).json({ error: "Unauthorized - Invalid cron secret" });
+      }
+
+      const results = {
+        weighInProcessed: 0,
+        weeklyReviewsGenerated: 0,
+        errors: [] as string[],
+      };
+
+      // Get all user IDs
+      const userIds = await storage.getAllUserIds();
+
+      // Process weigh-in reminders for all users
+      const { checkWeighInRequired } = await import("./jobs/saturday-weighin");
+      for (const userId of userIds) {
+        try {
+          await checkWeighInRequired(userId);
+          results.weighInProcessed++;
+        } catch (error: any) {
+          results.errors.push(`Weigh-in failed for ${userId}: ${error.message}`);
+        }
+      }
+
+      // Process weekly reviews for all users
+      const { generateWeeklyPerformance } = await import("./jobs/weekly-review");
+      for (const userId of userIds) {
+        try {
+          await generateWeeklyPerformance(userId);
+          results.weeklyReviewsGenerated++;
+        } catch (error: any) {
+          results.errors.push(`Weekly review failed for ${userId}: ${error.message}`);
+        }
+      }
+
+      res.json({
+        success: true,
+        timestamp: new Date().toISOString(),
+        ...results,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // ==========================================================================
   // HEALTH CHECK
   // ==========================================================================
 

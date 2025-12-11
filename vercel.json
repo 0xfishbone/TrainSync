@@ -28,11 +28,7 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/saturday-weighin",
-      "schedule": "0 7 * * 6"
-    },
-    {
-      "path": "/api/cron/weekly-review",
+      "path": "/api/cron/saturday-tasks",
       "schedule": "0 7 * * 6"
     }
   ],

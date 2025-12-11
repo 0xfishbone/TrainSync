@@ -35,6 +35,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getAllUserIds(): Promise<string[]>;
 
   // User Profiles
   getUserProfile(userId: string): Promise<UserProfile | undefined>;
@@ -152,6 +153,13 @@ export class MemStorage implements IStorage {
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async getAllUserIds(): Promise<string[]> {
+    // Return all user IDs with completed onboarding
+    return Array.from(this.userProfiles.values())
+      .filter((profile) => profile.onboardingCompleted)
+      .map((profile) => profile.userId);
   }
 
   // ========== User Profiles ==========

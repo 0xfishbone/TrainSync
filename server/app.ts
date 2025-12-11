@@ -4,9 +4,8 @@ import express, { type Express, type Request, Response, NextFunction } from "exp
 import session from "express-session";
 import cors from "cors";
 import { registerRoutes } from "./routes";
-import { startWeeklyReviewJob } from "./jobs/weekly-review";
-import { startMealReminderJob } from "./jobs/meal-reminders";
-import { startSaturdayWeighInJob } from "./jobs/saturday-weighin";
+import connectPgSimple from "connect-pg-simple";
+import { Pool } from "@neondatabase/serverless";
 
 // Augment express-session with custom SessionData
 declare module "express-session" {
@@ -53,11 +52,19 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false }));
 
-// Configure session middleware
-// Using memory store for development (sessions persist across requests but not server restarts)
-// For production, use PostgreSQL store with connect-pg-simple
+// Configure session middleware with PostgreSQL store for serverless
+const PgSession = connectPgSimple(session);
+const sessionStore = process.env.NODE_ENV === "production"
+  ? new PgSession({
+      pool: new Pool({ connectionString: process.env.DATABASE_URL }),
+      tableName: "user_sessions",
+      createTableIfMissing: true,
+    })
+  : undefined; // Use MemoryStore for development
+
 app.use(
   session({
+    store: sessionStore,
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -134,9 +141,8 @@ export default async function runApp(
   server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
 
-    // Start background cron jobs
-    startSaturdayWeighInJob(); // Saturday 7am - Weigh-in reminder
-    startWeeklyReviewJob(); // Saturday 7am - Weekly performance calculation
-    startMealReminderJob(); // Daily meal reminders
+    // Note: Cron jobs moved to Vercel Cron API endpoints
+    // See vercel.json for cron schedules and server/routes.ts for endpoints:
+    // - GET /api/cron/saturday-tasks (Saturday 7am) - Weigh-in + Weekly Review
   });
 }
