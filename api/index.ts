@@ -35,8 +35,8 @@ initPromise = (async () => {
   try {
     console.log("[Vercel] Starting route initialization...");
 
-    // Register all API routes (we don't need the HTTP server return value)
-    await registerRoutes(app);
+    // Register all API routes in serverless mode (no HTTP server creation)
+    await registerRoutes(app, { serverless: true });
 
     // Error handling middleware (added AFTER routes)
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

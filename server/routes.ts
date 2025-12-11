@@ -18,7 +18,7 @@ import { requireAuth, type AuthRequest } from "./middleware/auth";
 // Route Handlers
 // ============================================================================
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express, options?: { serverless?: boolean }): Promise<Server | void> {
 
   // ==========================================================================
   // AUTH ROUTES
@@ -1241,6 +1241,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
+
+  // Only create HTTP server for traditional deployment, not serverless
+  if (options?.serverless) {
+    return; // Serverless doesn't need HTTP server creation
+  }
 
   const httpServer = createServer(app);
   return httpServer;
