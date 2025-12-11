@@ -124,11 +124,85 @@ npm run start            # Start production server
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes | - |
+| `DATABASE_URL` | PostgreSQL connection string (Neon) | Yes | - |
 | `GEMINI_API_KEY` | Google Gemini API key | Yes | - |
 | `SESSION_SECRET` | Session encryption key | Yes | - |
+| `CRON_SECRET` | Cron endpoint authentication | Yes (prod) | - |
+| `FRONTEND_URL` | Frontend URL for CORS | No | * (allow all) |
 | `PORT` | Server port | No | 5000 |
 | `NODE_ENV` | Environment | No | development |
+
+**Generate secrets:**
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+## Deployment to Vercel
+
+### Prerequisites
+1. Create a [Neon PostgreSQL](https://neon.tech) database (free tier available)
+2. Get a [Gemini API key](https://makersuite.google.com/app/apikey) (free tier available)
+3. Generate secrets for SESSION_SECRET and CRON_SECRET
+
+### Steps
+
+1. **Push to GitHub**
+   ```bash
+   git push origin main
+   ```
+
+2. **Import to Vercel**
+   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
+   - Click "Import Project"
+   - Select your TrainSync repository
+   - Click "Import"
+
+3. **Configure Environment Variables**
+
+   In Vercel Dashboard → Settings → Environment Variables, add:
+
+   ```
+   DATABASE_URL=postgresql://user:pass@ep-xxx.neon.tech/trainsync?sslmode=require
+   GEMINI_API_KEY=your-gemini-api-key
+   SESSION_SECRET=generated-secret-1
+   CRON_SECRET=generated-secret-2
+   NODE_ENV=production
+   FRONTEND_URL=https://your-app.vercel.app  (optional)
+   ```
+
+4. **Deploy Database Schema**
+
+   After first deployment, push schema to your database:
+   ```bash
+   # Make sure DATABASE_URL in .env points to production database
+   npm run db:push
+   ```
+
+5. **Configure Vercel Cron (Optional)**
+
+   The app includes a weekly Saturday cron job (7am) for:
+   - Weigh-in reminders
+   - Weekly performance reviews
+
+   In Vercel Dashboard → Settings → Cron Jobs:
+   - Verify `/api/cron/saturday-tasks` is scheduled
+   - Add `CRON_SECRET` as Authorization header: `Bearer <your-cron-secret>`
+
+### Vercel Configuration
+
+The project includes `vercel.json` with:
+- Build configuration for serverless deployment
+- API route rewrites
+- CORS headers for API endpoints
+- Cron job schedules (Hobby tier: 1 job/day max)
+
+### Architecture Notes
+
+**Serverless-Ready:**
+- PostgreSQL session store (not in-memory)
+- Stateless API endpoints
+- Cron jobs via Vercel Cron API (not node-cron)
+- Neon serverless PostgreSQL with connection pooling
 
 ## Contributing
 
