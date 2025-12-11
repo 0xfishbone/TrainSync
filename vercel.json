@@ -34,10 +34,6 @@
     {
       "path": "/api/cron/weekly-review",
       "schedule": "0 7 * * 6"
-    },
-    {
-      "path": "/api/cron/meal-reminders",
-      "schedule": "0 8,12,18 * * *"
     }
   ],
   "env": {
