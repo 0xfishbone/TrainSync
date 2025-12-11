@@ -1,50 +1,214 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useLocation } from "wouter";
 import { MobileShell } from "@/components/layout/mobile-shell";
-import { Camera, Mic, ChevronRight, Loader2, Check, Type } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Camera, Mic, Loader2, Check, Type } from "lucide-react";
 import { toast } from "sonner";
-import healthyBreakfastImg from "@assets/stock_images/healthy_breakfast_eg_4358bed4.jpg";
+
+interface MealAnalysis {
+  description: string;
+  calories: number;
+  protein: number;
+  foods: string[];
+  photoUrl?: string;
+}
 
 export default function Nutrition() {
+  const [, setLocation] = useLocation();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInput, setTextInput] = useState("");
+  const [mealAnalysis, setMealAnalysis] = useState<MealAnalysis | null>(null);
+  const [capturedImageUrl, setCapturedImageUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check user is logged in
+    const userId = localStorage.getItem("trainsync_user_id");
+    if (!userId) {
+      toast.error("Please complete onboarding first");
+      setLocation("/onboarding");
+      return;
+    }
+
+    setIsAnalyzing(true);
+
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        const base64Data = base64.split(",")[1];
+        const mimeType = file.type;
+
+        // Store image URL for display
+        setCapturedImageUrl(base64);
+
+        // Call Gemini API for analysis (photo)
+        const response = await fetch("/api/meals/analyze", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": userId,
+          },
+          body: JSON.stringify({
+            imageBase64: base64Data,
+            mimeType,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to analyze meal photo");
+        }
+
+        const analysis = await response.json();
+        setMealAnalysis({
+          description: `Detected: ${(analysis.foods || []).join(", ")}`,
+          calories: analysis.calories,
+          protein: analysis.protein,
+          foods: analysis.foods || [],
+          photoUrl: base64,
+        });
+
+        setIsAnalyzing(false);
+        setShowResult(true);
+      };
+
+      reader.readAsDataURL(file);
+    } catch (error: any) {
+      console.error("Error analyzing photo:", error);
+      toast.error("Failed to analyze meal", {
+        description: error.message || "Please try again",
+      });
+      setIsAnalyzing(false);
+    }
+  };
 
   const handleScan = () => {
-    setIsAnalyzing(true);
-    // Simulate Gemini analysis delay
-    setTimeout(() => {
-      setIsAnalyzing(false);
-      setShowResult(true);
-    }, 2500);
+    fileInputRef.current?.click();
   };
 
-  const handleTextSubmit = (e: React.FormEvent) => {
+  const handleTextSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!textInput.trim()) return;
-    
+
+    const userId = localStorage.getItem("trainsync_user_id");
+    if (!userId) {
+      toast.error("Please complete onboarding first");
+      setLocation("/onboarding");
+      return;
+    }
+
     setIsAnalyzing(true);
     setShowTextInput(false);
-    
-    // Simulate text analysis
-    setTimeout(() => {
+
+    try {
+      // Call Gemini API for text/voice analysis
+      const response = await fetch("/api/meals/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify({
+          mealText: textInput,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to analyze meal description");
+      }
+
+      const analysis = await response.json();
+      setMealAnalysis({
+        description: textInput,
+        calories: analysis.calories,
+        protein: analysis.protein,
+        foods: analysis.foods || [],
+      });
+
       setIsAnalyzing(false);
       setShowResult(true);
-    }, 1500);
+    } catch (error: any) {
+      console.error("Error analyzing text:", error);
+      toast.error("Failed to analyze meal", {
+        description: error.message || "Please try again",
+      });
+      setIsAnalyzing(false);
+      setShowTextInput(true);
+    }
   };
 
-  const handleConfirm = () => {
-    toast.success("Meal logged successfully", {
-      description: "Added 450 kcal, 25g protein",
-    });
-    setShowResult(false);
-    setTextInput("");
+  const handleConfirm = async () => {
+    if (!mealAnalysis) return;
+
+    const userId = localStorage.getItem("trainsync_user_id");
+    if (!userId) return;
+
+    try {
+      // Save meal log to backend
+      const response = await fetch("/api/meals", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify({
+          mealDate: new Date().toISOString(),
+          mealType: "other",
+          loggingMethod: mealAnalysis.photoUrl ? "photo" : "text",
+          photoStored: false,
+          photoKey: null,
+          foodsIdentified: mealAnalysis.foods,
+          calories: Math.round(mealAnalysis.calories),
+          protein: Math.round(mealAnalysis.protein),
+          aiAnalysis: null,
+          aiModelUsed: "gemini-2.0-flash-exp",
+          confidenceScore: 0.8,
+          manuallyAdjusted: false,
+          finalCalories: Math.round(mealAnalysis.calories),
+          finalProtein: Math.round(mealAnalysis.protein),
+          notes: mealAnalysis.description,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save meal log");
+      }
+
+      toast.success("Meal logged successfully", {
+        description: `Added ${Math.round(mealAnalysis.calories)} kcal, ${Math.round(mealAnalysis.protein)}g protein`,
+      });
+
+      // Reset state
+      setShowResult(false);
+      setTextInput("");
+      setMealAnalysis(null);
+      setCapturedImageUrl(null);
+    } catch (error: any) {
+      console.error("Error saving meal:", error);
+      toast.error("Failed to save meal", {
+        description: error.message || "Please try again",
+      });
+    }
   };
 
   return (
     <MobileShell>
       <div className="p-6 pt-12 min-h-screen flex flex-col">
+        {/* Hidden file input for camera */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handlePhotoCapture}
+          className="hidden"
+        />
+
         <header className="mb-8">
           <h1 className="text-2xl font-display font-bold mb-1">Log Meal</h1>
           <p className="text-secondary">Snap a photo, speak, or type.</p>
@@ -57,6 +221,7 @@ export default function Nutrition() {
                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
                    <Loader2 className="animate-spin text-primary mb-4" size={48} />
                    <p className="text-lg font-medium animate-pulse">Analyzing with Gemini...</p>
+                   <p className="text-sm text-secondary mt-2">This may take a few seconds...</p>
                  </div>
                )}
                
@@ -121,16 +286,18 @@ export default function Nutrition() {
           </div>
         ) : (
           <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-8 duration-500">
-             <div className="relative aspect-video rounded-2xl overflow-hidden mb-6 shadow-2xl">
-                <img 
-                  src={healthyBreakfastImg} 
-                  className="w-full h-full object-cover"
-                  alt="Scanned meal"
-                />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                   <span className="text-white font-bold text-lg">Detected Meal</span>
-                </div>
-             </div>
+             {capturedImageUrl && (
+               <div className="relative aspect-video rounded-2xl overflow-hidden mb-6 shadow-2xl">
+                  <img
+                    src={capturedImageUrl}
+                    className="w-full h-full object-cover"
+                    alt="Captured meal"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                     <span className="text-white font-bold text-lg">Detected Meal</span>
+                  </div>
+               </div>
+             )}
 
              <div className="bg-surface rounded-2xl p-6 border border-border space-y-6 mb-auto">
                 <div className="flex items-start gap-4">
@@ -138,9 +305,11 @@ export default function Nutrition() {
                      <Check className="text-success" size={24} />
                    </div>
                    <div>
-                     <h3 className="text-xl font-bold mb-1">Eggs & Coffee</h3>
+                     <h3 className="text-xl font-bold mb-1">
+                       {mealAnalysis?.foods?.[0] || "Meal Detected"}
+                     </h3>
                      <p className="text-secondary text-sm">
-                       Looks like 2 large eggs, 1 slice of toast, and black coffee.
+                       {mealAnalysis?.description || "Meal analyzed by Gemini AI"}
                      </p>
                    </div>
                 </div>
@@ -148,27 +317,35 @@ export default function Nutrition() {
                 <div className="grid grid-cols-2 gap-4">
                    <div className="bg-elevated p-4 rounded-xl">
                       <p className="text-secondary text-xs uppercase font-bold mb-1">Calories</p>
-                      <p className="text-2xl font-bold text-white">~450</p>
+                      <p className="text-2xl font-bold text-white">
+                        ~{Math.round(mealAnalysis?.calories || 0)}
+                      </p>
                    </div>
                    <div className="bg-elevated p-4 rounded-xl">
                       <p className="text-secondary text-xs uppercase font-bold mb-1">Protein</p>
-                      <p className="text-2xl font-bold text-success">25g</p>
+                      <p className="text-2xl font-bold text-success">
+                        {Math.round(mealAnalysis?.protein || 0)}g
+                      </p>
                    </div>
                 </div>
              </div>
 
              <div className="space-y-3 mt-6 pb-12">
-                <button 
+                <button
                   onClick={handleConfirm}
                   className="w-full h-14 bg-primary hover:bg-blue-600 active:scale-95 transition-all rounded-xl text-white font-bold shadow-lg shadow-primary/20"
                 >
                   Log Meal
                 </button>
-                <button 
-                  onClick={() => setShowResult(false)}
+                <button
+                  onClick={() => {
+                    setShowResult(false);
+                    setMealAnalysis(null);
+                    setCapturedImageUrl(null);
+                  }}
                   className="w-full h-14 bg-transparent hover:bg-elevated active:scale-95 transition-all rounded-xl text-secondary font-medium"
                 >
-                  Edit Details
+                  Retake / Edit
                 </button>
              </div>
           </div>

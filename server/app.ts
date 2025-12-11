@@ -1,7 +1,19 @@
 import { type Server } from "node:http";
 
 import express, { type Express, type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import cors from "cors";
 import { registerRoutes } from "./routes";
+import { startWeeklyReviewJob } from "./jobs/weekly-review";
+import { startMealReminderJob } from "./jobs/meal-reminders";
+import { startSaturdayWeighInJob } from "./jobs/saturday-weighin";
+
+// Augment express-session with custom SessionData
+declare module "express-session" {
+  interface SessionData {
+    userId: string; // UUID string
+  }
+}
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -14,7 +26,20 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// Validate required environment variables
+if (!process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET environment variable is required');
+}
+
 export const app = express();
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.FRONTEND_URL || true
+    : true,
+  credentials: true,
+}));
 
 declare module 'http' {
   interface IncomingMessage {
@@ -27,6 +52,23 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+
+// Configure session middleware
+// Using memory store for development (sessions persist across requests but not server restarts)
+// For production, use PostgreSQL store with connect-pg-simple
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    },
+  })
+);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -67,8 +109,17 @@ export default async function runApp(
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    // Log error details server-side
+    log(`Error ${status}: ${message}`, "error");
+    if (process.env.NODE_ENV !== "production") {
+      console.error(err.stack);
+    }
+
+    // Send safe error response (no stack trace in production)
+    res.status(status).json({
+      error: message,
+      ...(process.env.NODE_ENV !== "production" && { stack: err.stack }),
+    });
   });
 
   // importantly run the final setup after setting up all the other routes so
@@ -80,11 +131,12 @@ export default async function runApp(
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
+
+    // Start background cron jobs
+    startSaturdayWeighInJob(); // Saturday 7am - Weigh-in reminder
+    startWeeklyReviewJob(); // Saturday 7am - Weekly performance calculation
+    startMealReminderJob(); // Daily meal reminders
   });
 }
