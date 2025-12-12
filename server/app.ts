@@ -54,13 +54,29 @@ app.use(express.urlencoded({ extended: false }));
 
 // Configure session middleware with PostgreSQL store for serverless
 const PgSession = connectPgSimple(session);
-const sessionStore = process.env.NODE_ENV === "production"
-  ? new PgSession({
+let sessionStore: any = undefined;
+
+if (process.env.NODE_ENV === "production") {
+  try {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is required for production');
+    }
+
+    log('Initializing PostgreSQL session store for serverless...', 'session');
+    sessionStore = new PgSession({
       pool: new Pool({ connectionString: process.env.DATABASE_URL }),
       tableName: "user_sessions",
       createTableIfMissing: true,
-    })
-  : undefined; // Use MemoryStore for development
+    });
+    log('PostgreSQL session store initialized successfully', 'session');
+  } catch (error: any) {
+    log(`CRITICAL: Failed to initialize session store: ${error.message}`, 'error');
+    console.error('Session store initialization error:', error);
+    throw new Error(`Session store initialization failed: ${error.message}`);
+  }
+} else {
+  log('Using MemoryStore for development sessions', 'session');
+}
 
 app.use(
   session({
@@ -110,7 +126,13 @@ app.use((req, res, next) => {
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ) {
+  // For traditional deployment, don't use serverless mode (creates HTTP server)
   const server = await registerRoutes(app);
+
+  // Type guard - server should always exist in traditional deployment
+  if (!server) {
+    throw new Error('Server creation failed - registerRoutes returned undefined');
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

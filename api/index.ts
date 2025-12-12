@@ -1,7 +1,19 @@
 import "dotenv/config";
 import type { Request, Response, NextFunction } from "express";
+
+// Log environment status for debugging
+console.log("[Vercel] Module loading started");
+console.log("[Vercel] Environment check:", {
+  NODE_ENV: process.env.NODE_ENV,
+  SESSION_SECRET: process.env.SESSION_SECRET ? "SET" : "MISSING",
+  DATABASE_URL: process.env.DATABASE_URL ? "SET" : "MISSING",
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY ? "SET" : "MISSING",
+});
+
 import { app } from "../server/app";
 import { registerRoutes } from "../server/routes";
+
+console.log("[Vercel] App imported successfully");
 
 // Track initialization state
 let initializationComplete = false;
