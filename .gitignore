@@ -5,6 +5,10 @@ server/public
 vite.config.ts.*
 *.tar.gz
 
+# Build artifacts
+api/index.js
+api/index.js.map
+
 # Environment variables
 .env
 .env.local
